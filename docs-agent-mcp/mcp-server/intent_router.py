@@ -181,18 +181,19 @@ def rerank_by_release_date(hits: list[dict], top_k: int) -> list[dict]:
     return (dated + undated)[:top_k]
 
 
+def _version_token(version: str) -> re.Pattern[str]:
+    """Match a version as a whole token, so "1.1" matches "v1.1" and "1.1.0" but not "1.10" or "21.1"."""
+    normalized = re.escape(version.lower().lstrip("v"))
+    return re.compile(rf"(?<![\d.])v?{normalized}(?!\d)")
+
+
 def entity_matches_version(entity: dict, versions: list[str]) -> bool:
     entity_version = str(entity.get("version", "")).lower()
     content = str(entity.get("content_text", "")).lower()
     file_path = str(entity.get("file_path", "")).lower()
     for version in versions:
-        normalized = version.lower().lstrip("v")
-        if (
-            normalized in entity_version
-            or normalized in content
-            or normalized in file_path
-            or version.lower() in content
-        ):
+        token = _version_token(version)
+        if token.search(entity_version) or token.search(content) or token.search(file_path):
             return True
     return False
 
